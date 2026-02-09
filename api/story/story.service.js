@@ -1,5 +1,4 @@
 import { ObjectId } from 'mongodb'
-
 import { logger } from '../../services/logger.service.js'
 import { makeId } from '../../services/util.service.js'
 import { dbService } from '../../services/db.service.js'
@@ -15,16 +14,17 @@ export const storyService = {
 	update,
 	addStoryComment,
 	removeStoryComment,
+	toggleLike
 }
 
-async function query(filterBy = { txt: '' }) {
+async function query(filterBy = { txt: '', userId: '' }) {
 	try {
 		const criteria = _buildCriteria(filterBy)
 		const sort = _buildSort(filterBy)
 
 		const collection = await dbService.getCollection('story')
 		
-		var storyCursor = collection.find(criteria, { sort })
+		var storyCursor = collection.find(criteria).sort(sort)
 
 		if (filterBy.pageIdx !== undefined) {
 			storyCursor.skip(filterBy.pageIdx * PAGE_SIZE).limit(PAGE_SIZE)
@@ -61,7 +61,7 @@ async function remove(storyId) {
 		const criteria = {
 			_id: ObjectId.createFromHexString(storyId),
 		}
-		if (!isAdmin) criteria['owner._id'] = ownerId
+		if (!isAdmin) criteria['by.byId'] = ownerId
 
 		const collection = await dbService.getCollection('story')
 		const res = await collection.deleteOne(criteria)
@@ -77,8 +77,8 @@ async function remove(storyId) {
 async function add(story) {
 	try {
 		const collection = await dbService.getCollection('story')
-		await collection.insertOne(story)
-
+		const res = await collection.insertOne(story)
+		story._id = res.insertedId.toString()
 		return story
 	} catch (err) {
 		logger.error('cannot insert story', err)
@@ -87,7 +87,7 @@ async function add(story) {
 }
 
 async function update(story) {
-	const storyToSave = { vendor: story.vendor, speed: story.speed }
+	const storyToSave = { txt: story.txt, likedBy: story.likedBy }
 
 	try {
 		const criteria = { _id: ObjectId.createFromHexString(story._id) }
@@ -102,19 +102,22 @@ async function update(story) {
 	}
 }
 
-async function addStoryComment(storyId, comment) {
-	try {
-		const criteria = { _id: ObjectId.createFromHexString(storyId) }
-		comment.id = makeId()
+async function addStoryComment(storyId, comment) {	
+    try {
+        const criteria = { _id: ObjectId.createFromHexString(storyId) }
+        comment._id = makeId()
+        comment.createdAt = Date.now()
+        const collection = await dbService.getCollection('story')
 
-		const collection = await dbService.getCollection('story')
-		await collection.updateOne(criteria, { $push: { comments: comment } })
+        await collection.updateOne( criteria, { $push: { comments: comment } })
 
-		return comment
-	} catch (err) {
-		logger.error(`cannot add story comment ${storyId}`, err)
-		throw err
-	}
+        const updatedStory = await collection.findOne(criteria)
+        return updatedStory
+
+    } catch (err) {
+        logger.error(`cannot add story comment ${storyId}`, err)
+        throw err
+    }
 }
 
 async function removeStoryComment(storyId, commentId) {
@@ -131,15 +134,38 @@ async function removeStoryComment(storyId, commentId) {
 	}
 }
 
+async function toggleLike(storyId, user) {
+    const collection = await dbService.getCollection('story')
+    const criteria = { _id: ObjectId.createFromHexString(storyId) }
+
+    const alreadyLiked = await collection.findOne({
+        ...criteria,
+        'likedBy.byId': user._id
+    })
+
+    const update = alreadyLiked
+        ? { $pull: { likedBy: { byId: user._id } } }
+        : {
+            $addToSet: {
+                likedBy: {
+                    byId: user._id,
+                    username: user.username
+                }
+            }
+        }
+    await collection.updateOne(criteria, update)
+    return await collection.findOne(criteria)
+}
+
 function _buildCriteria(filterBy) {
 	const criteria = {
 		txt: { $regex: filterBy.txt, $options: 'i' }
 	}
-
 	return criteria
 }
 
 function _buildSort(filterBy) {
-	if (!filterBy.sortField) return {}
-	return { [filterBy.sortField]: filterBy.sortDir }
+	return {
+		createdAt: -1 
+	}
 }
