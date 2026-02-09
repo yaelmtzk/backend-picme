@@ -31,7 +31,18 @@ export async function getStoryById(req, res) {
 export async function addStory(req, res) {
 	const { loggedinUser, body } = req
 	const story = {
-		txt: body.txt
+		txt: body.txt,
+		imgUrl: body.imgUrl,
+        by: {
+			byId: loggedinUser._id,
+			username: loggedinUser.username,
+			imgUrl: loggedinUser.imgUrl
+		},
+        createdAt: Date.now(),
+        loc: body.loc,
+        comments: body.comments,
+        likedBy: body.likedBy,
+        tags: body.tags
 	}
 	try {
 		story.by.byId = loggedinUser._id
@@ -74,20 +85,25 @@ export async function removeStory(req, res) {
 }
 
 export async function addStoryComment(req, res) {
-	const { loggedinUser } = req
+    const { loggedinUser } = req	
+    try {
+        const storyId = req.params.id
 
-	try {
-		const storyId = req.params.id
-		const comment = {
-			txt: req.body.txt,
-			by: loggedinUser,
-		}
-		const savedComment = await storyService.addStoryComment(storyId, comment)
-		res.json(savedComment)
-	} catch (err) {
-		logger.error('Failed to add story comment', err)
-		res.status(400).send({ err: 'Failed to add story comment' })
-	}
+        const comment = {
+            txt: req.body.txt,
+            byId: loggedinUser._id,
+            username: loggedinUser.username,
+            imgUrl: loggedinUser.imgUrl
+        }
+
+        const updatedStory = await storyService.addStoryComment(storyId, comment)
+
+        res.json(updatedStory)
+
+    } catch (err) {
+        logger.error('Failed to add story comment', err)
+        res.status(400).send({ err: 'Failed to add story comment' })
+    }
 }
 
 export async function removeStoryComment(req, res) {
@@ -101,3 +117,39 @@ export async function removeStoryComment(req, res) {
 		res.status(400).send({ err: 'Failed to remove story comment' })
 	}
 }
+
+// export async function toggleLike(storyId, user) {
+//     const collection = await dbService.getCollection('story')
+//     const criteria = { _id: ObjectId.createFromHexString(storyId) }
+
+//     const alreadyLiked = await collection.findOne({
+//         ...criteria,
+//         'likedBy.byId': user._id
+//     })
+
+//     const update = alreadyLiked
+//         ? { $pull: { likedBy: { byId: user._id } } }
+//         : { $addToSet: { likedBy: {
+//             byId: user._id,
+//             username: user.username
+//         }}}
+
+//     await collection.updateOne(criteria, update)
+
+//     return await collection.findOne(criteria)
+// }
+
+export async function toggleLike(req, res) {
+    try {
+        const { id: storyId } = req.params
+        const { loggedinUser } = req
+
+        const updatedStory = await storyService.toggleLike(storyId, loggedinUser)
+        res.json(updatedStory)
+
+    } catch (err) {
+        logger.error('Failed to toggle like', err)
+        res.status(400).send({ err: 'Failed to toggle like' })
+    }
+}
+
