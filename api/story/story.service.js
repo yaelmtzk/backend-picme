@@ -3,6 +3,7 @@ import { logger } from '../../services/logger.service.js'
 import { makeId } from '../../services/util.service.js'
 import { dbService } from '../../services/db.service.js'
 import { asyncLocalStorage } from '../../services/als.service.js'
+import { removeImg } from '../../services/cloudinary.service.js'
 
 const PAGE_SIZE = 3
 
@@ -54,24 +55,28 @@ async function getById(storyId) {
 }
 
 async function remove(storyId) {
-	const { loggedinUser } = asyncLocalStorage.getStore()
-	const { _id: ownerId, isAdmin } = loggedinUser
+    const { loggedinUser } = asyncLocalStorage.getStore()
+    const { _id: ownerId, isAdmin } = loggedinUser
+    try {
+        const criteria = {
+            _id: ObjectId.createFromHexString(storyId),
+        }
+        if (!isAdmin) criteria['by.byId'] = ownerId
+        const collection = await dbService.getCollection('story')
 
-	try {
-		const criteria = {
-			_id: ObjectId.createFromHexString(storyId),
-		}
-		if (!isAdmin) criteria['by.byId'] = ownerId
+        const story = await collection.findOne(criteria)
+        if (!story) throw ('Not your story')
 
-		const collection = await dbService.getCollection('story')
-		const res = await collection.deleteOne(criteria)
+        if (story.img?.publicId) {
+            await removeImg(story.img.publicId)
+        }
+        await collection.deleteOne(criteria)
+        return storyId
 
-		if (res.deletedCount === 0) throw ('Not your story')
-		return storyId
-	} catch (err) {
-		logger.error(`cannot remove story ${storyId}`, err)
-		throw err
-	}
+    } catch (err) {
+        logger.error(`cannot remove story ${storyId}`, err)
+        throw err
+    }
 }
 
 async function add(story) {

@@ -32,7 +32,7 @@ export async function addStory(req, res) {
 	const { loggedinUser, body } = req
 	const story = {
 		txt: body.txt,
-		imgUrl: body.imgUrl,
+		img: body.img,
         by: {
 			byId: loggedinUser._id,
 			username: loggedinUser.username,
