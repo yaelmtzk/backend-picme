@@ -24,7 +24,7 @@ async function query(filterBy = { txt: '', userId: '' }) {
 		const sort = _buildSort(filterBy)
 
 		const collection = await dbService.getCollection('story')
-		
+
 		var storyCursor = collection.find(criteria).sort(sort)
 
 		if (filterBy.pageIdx !== undefined) {
@@ -55,28 +55,39 @@ async function getById(storyId) {
 }
 
 async function remove(storyId) {
-    const { loggedinUser } = asyncLocalStorage.getStore()
-    const { _id: ownerId, isAdmin } = loggedinUser
-    try {
-        const criteria = {
-            _id: ObjectId.createFromHexString(storyId),
-        }
-        if (!isAdmin) criteria['by.byId'] = ownerId
-        const collection = await dbService.getCollection('story')
+	const { loggedinUser } = asyncLocalStorage.getStore()
+	const { _id: ownerId, isAdmin } = loggedinUser
 
-        const story = await collection.findOne(criteria)
-        if (!story) throw ('Not your story')
+	try {
+		const criteria = {
+			_id: ObjectId.createFromHexString(storyId),
+		}
 
-        if (story.img?.publicId) {
-            await removeImg(story.img.publicId)
-        }
-        await collection.deleteOne(criteria)
-        return storyId
+		if (!isAdmin) criteria['by.byId'] = ownerId
 
-    } catch (err) {
-        logger.error(`cannot remove story ${storyId}`, err)
-        throw err
-    }
+		const collection = await dbService.getCollection('story')
+		
+		const story = await collection.findOne({
+			_id: ObjectId.createFromHexString(storyId),
+		})
+
+		if (!story) throw new Error('Not your story')
+
+		if (story.isProtected && !isAdmin) {
+			throw new Error('This demo story cannot be deleted')
+		}
+
+		if (story.img?.publicId) {
+			await removeImg(story.img.publicId)
+		}
+
+		await collection.deleteOne(criteria)
+		return storyId
+
+	} catch (err) {
+		logger.error(`cannot remove story ${storyId}`, err)
+		throw err
+	}
 }
 
 async function add(story) {
@@ -98,6 +109,7 @@ async function update(story) {
 		const criteria = { _id: ObjectId.createFromHexString(story._id) }
 
 		const collection = await dbService.getCollection('story')
+
 		await collection.updateOne(criteria, { $set: storyToSave })
 
 		return story
@@ -107,22 +119,22 @@ async function update(story) {
 	}
 }
 
-async function addStoryComment(storyId, comment) {	
-    try {
-        const criteria = { _id: ObjectId.createFromHexString(storyId) }
-        comment._id = makeId()
-        comment.createdAt = Date.now()
-        const collection = await dbService.getCollection('story')
+async function addStoryComment(storyId, comment) {
+	try {
+		const criteria = { _id: ObjectId.createFromHexString(storyId) }
+		comment._id = makeId()
+		comment.createdAt = Date.now()
+		const collection = await dbService.getCollection('story')
 
-        await collection.updateOne( criteria, { $push: { comments: comment } })
+		await collection.updateOne(criteria, { $push: { comments: comment } })
 
-        const updatedStory = await collection.findOne(criteria)
-        return updatedStory
+		const updatedStory = await collection.findOne(criteria)
+		return updatedStory
 
-    } catch (err) {
-        logger.error(`cannot add story comment ${storyId}`, err)
-        throw err
-    }
+	} catch (err) {
+		logger.error(`cannot add story comment ${storyId}`, err)
+		throw err
+	}
 }
 
 async function removeStoryComment(storyId, commentId) {
@@ -140,26 +152,26 @@ async function removeStoryComment(storyId, commentId) {
 }
 
 async function toggleLike(storyId, user) {
-    const collection = await dbService.getCollection('story')
-    const criteria = { _id: ObjectId.createFromHexString(storyId) }
+	const collection = await dbService.getCollection('story')
+	const criteria = { _id: ObjectId.createFromHexString(storyId) }
 
-    const alreadyLiked = await collection.findOne({
-        ...criteria,
-        'likedBy.byId': user._id
-    })
+	const alreadyLiked = await collection.findOne({
+		...criteria,
+		'likedBy.byId': user._id
+	})
 
-    const update = alreadyLiked
-        ? { $pull: { likedBy: { byId: user._id } } }
-        : {
-            $addToSet: {
-                likedBy: {
-                    byId: user._id,
-                    username: user.username
-                }
-            }
-        }
-    await collection.updateOne(criteria, update)
-    return await collection.findOne(criteria)
+	const update = alreadyLiked
+		? { $pull: { likedBy: { byId: user._id } } }
+		: {
+			$addToSet: {
+				likedBy: {
+					byId: user._id,
+					username: user.username
+				}
+			}
+		}
+	await collection.updateOne(criteria, update)
+	return await collection.findOne(criteria)
 }
 
 function _buildCriteria(filterBy) {
@@ -171,6 +183,6 @@ function _buildCriteria(filterBy) {
 
 function _buildSort(filterBy) {
 	return {
-		createdAt: -1 
+		createdAt: -1
 	}
 }

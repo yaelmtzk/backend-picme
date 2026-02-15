@@ -7,7 +7,5 @@ cloudinary.config({
 })
 
 export async function removeImg(publicId) {
-    console.log(process.env.CLOUD_NAME)
-    console.log(`publicId`, publicId)
     return await cloudinary.uploader.destroy(publicId)
 }
