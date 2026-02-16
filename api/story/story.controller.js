@@ -107,10 +107,12 @@ export async function addStoryComment(req, res) {
 }
 
 export async function removeStoryComment(req, res) {
+	const { loggedinUser } = req	
 	try {
-		const { id: storyId, commentId } = req.params
+		const { id, commentId } = req.params
 
-		const removedId = await storyService.removeStoryComment(storyId, commentId)
+		const removedId = await storyService.removeStoryComment(id, commentId, loggedinUser)
+
 		res.send(removedId)
 	} catch (err) {
 		logger.error('Failed to remove story comment', err)
@@ -118,26 +120,6 @@ export async function removeStoryComment(req, res) {
 	}
 }
 
-// export async function toggleLike(storyId, user) {
-//     const collection = await dbService.getCollection('story')
-//     const criteria = { _id: ObjectId.createFromHexString(storyId) }
-
-//     const alreadyLiked = await collection.findOne({
-//         ...criteria,
-//         'likedBy.byId': user._id
-//     })
-
-//     const update = alreadyLiked
-//         ? { $pull: { likedBy: { byId: user._id } } }
-//         : { $addToSet: { likedBy: {
-//             byId: user._id,
-//             username: user.username
-//         }}}
-
-//     await collection.updateOne(criteria, update)
-
-//     return await collection.findOne(criteria)
-// }
 
 export async function toggleLike(req, res) {
     try {

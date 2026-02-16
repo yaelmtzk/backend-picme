@@ -5,8 +5,6 @@ import { dbService } from '../../services/db.service.js'
 import { asyncLocalStorage } from '../../services/als.service.js'
 import { removeImg } from '../../services/cloudinary.service.js'
 
-const PAGE_SIZE = 3
-
 export const storyService = {
 	remove,
 	query,
@@ -26,10 +24,6 @@ async function query(filterBy = { txt: '', userId: '' }) {
 		const collection = await dbService.getCollection('story')
 
 		var storyCursor = collection.find(criteria).sort(sort)
-
-		if (filterBy.pageIdx !== undefined) {
-			storyCursor.skip(filterBy.pageIdx * PAGE_SIZE).limit(PAGE_SIZE)
-		}
 
 		const storys = await storyCursor.toArray()
 		return storys
@@ -66,7 +60,7 @@ async function remove(storyId) {
 		if (!isAdmin) criteria['by.byId'] = ownerId
 
 		const collection = await dbService.getCollection('story')
-		
+
 		const story = await collection.findOne({
 			_id: ObjectId.createFromHexString(storyId),
 		})
@@ -137,14 +131,31 @@ async function addStoryComment(storyId, comment) {
 	}
 }
 
-async function removeStoryComment(storyId, commentId) {
+async function removeStoryComment(storyId, commentId, loggedinUser) {	
 	try {
-		const criteria = { _id: ObjectId.createFromHexString(storyId) }
+		const criteria = {
+			_id: ObjectId.createFromHexString(storyId),
+			'comments._id': commentId,
+			'comments.byId': loggedinUser._id,
+		}
 
 		const collection = await dbService.getCollection('story')
-		await collection.updateOne(criteria, { $pull: { comments: { id: commentId } } })
+
+		const result = await collection.updateOne(criteria, {
+			$pull: {
+				comments: {
+					_id: commentId,
+					isProtected: { $ne: true }  // check only inside $pull
+				}
+			}
+		})
+
+		if (result.modifiedCount === 0) {
+			throw new Error('Not authorized to delete this comment or comment is protected')
+		}
 
 		return commentId
+
 	} catch (err) {
 		logger.error(`cannot remove story comment ${storyId}`, err)
 		throw err

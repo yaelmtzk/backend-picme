@@ -7,7 +7,6 @@ import cookieParser from 'cookie-parser'
 
 import { authRoutes } from './api/auth/auth.routes.js'
 import { userRoutes } from './api/user/user.routes.js'
-import { reviewRoutes } from './api/review/review.routes.js'
 import { storyRoutes } from './api/story/story.routes.js'
 import { setupSocketAPI } from './services/socket.service.js'
 
@@ -37,15 +36,9 @@ app.all('*all', setupAsyncLocalStorage)
 
 app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
-app.use('/api/review', reviewRoutes)
 app.use('/api/story', storyRoutes)
 
 setupSocketAPI(server)
-
-// Make every unhandled server-side-route match index.html
-// so when requesting http://localhost:3030/unhandled-route... 
-// it will still serve the index.html file
-// and allow vue/react-router to take it from there
 
 app.get('/*all', (req, res) => {
     res.sendFile(path.resolve('public/index.html'))

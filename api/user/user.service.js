@@ -1,6 +1,5 @@
 import { dbService } from '../../services/db.service.js'
 import { logger } from '../../services/logger.service.js'
-import { reviewService } from '../review/review.service.js'
 import { ObjectId } from 'mongodb'
 
 export const userService = {
@@ -90,7 +89,7 @@ async function add(user) {
             username: user.username,
             password: user.password,
             fullname: user.fullname,
-            imgUrl: user.imgUrl,
+            imgUrl: user.imgUrl || 'https://res.cloudinary.com/picmeapp/image/upload/v1771233643/owjl9mvyi7qnnnh0253z.png',
             isAdmin: false,
             bio: '',
             highlights: [],

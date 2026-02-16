@@ -20,10 +20,6 @@ export async function login(req, res) {
 export async function signup(req, res) {
 	try {
 		const credentials = req.body
-
-		// Never log passwords
-		// logger.debug(credentials)
-		
         const account = await authService.signup(credentials)
 		logger.debug(`auth.route - new account created: ` + JSON.stringify(account))
 		
