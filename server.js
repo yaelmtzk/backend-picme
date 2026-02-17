@@ -4,12 +4,11 @@ import path from 'path'
 import cors from 'cors'
 import express from 'express'
 import cookieParser from 'cookie-parser'
-
 import { authRoutes } from './api/auth/auth.routes.js'
 import { userRoutes } from './api/user/user.routes.js'
 import { storyRoutes } from './api/story/story.routes.js'
 import { setupSocketAPI } from './services/socket.service.js'
-
+import { dbService } from './services/db.service.js'
 import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 
 const app = express()
@@ -22,17 +21,23 @@ app.use(express.json())
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true)
+
     if (
       origin.startsWith('http://localhost') ||
       origin.startsWith('http://127.0.0.1') ||
-      origin.endsWith('.vercel.app')
+      origin.includes('.vercel.app')
     ) {
       return callback(null, true)
     }
-    return callback(new Error('Not allowed by CORS'), false)
+
+    console.log('Blocked by CORS:', origin)
+    return callback(null, false)
   },
   credentials: true
 }
+
+app.use(cors(corsOptions))
+
 
 app.use(cors(corsOptions))
 app.all('*all', setupAsyncLocalStorage)
@@ -49,6 +54,8 @@ app.get('/*all', (req, res) => {
 
 import { logger } from './services/logger.service.js'
 const port = process.env.PORT || 3030
+
+await dbService.connect()
 
 server.listen(port, () => {
     logger.info('Server is running on port: ' + port)
