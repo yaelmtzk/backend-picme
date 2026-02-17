@@ -1,6 +1,5 @@
 import 'dotenv/config'
 import http from 'http'
-import path from 'path'
 import cors from 'cors'
 import express from 'express'
 import cookieParser from 'cookie-parser'
@@ -13,6 +12,11 @@ import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 
 const app = express()
 const server = http.createServer(app)
+
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store')
+  next()
+})
 
 // Express App Config
 app.use(cookieParser())
@@ -48,10 +52,6 @@ app.use('/api/user', userRoutes)
 app.use('/api/story', storyRoutes)
 
 setupSocketAPI(server)
-
-// app.get('/*all', (req, res) => {
-//     res.sendFile(path.resolve('public/index.html'))
-// })
 
 import { logger } from './services/logger.service.js'
 const port = process.env.PORT || 3030
