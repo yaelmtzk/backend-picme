@@ -1,4 +1,4 @@
-import 'dotenv/config' 
+import 'dotenv/config'
 import http from 'http'
 import path from 'path'
 import cors from 'cors'
@@ -19,19 +19,22 @@ const server = http.createServer(app)
 app.use(cookieParser())
 app.use(express.json())
 
-if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.resolve('public')))
-} else {
-    const corsOptions = {
-        origin: [   'http://127.0.0.1:3000',
-                    'http://localhost:3000',
-                    'http://127.0.0.1:5173',
-                    'http://localhost:5173'
-                ],
-        credentials: true
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true)
+    if (
+      origin.startsWith('http://localhost') ||
+      origin.startsWith('http://127.0.0.1') ||
+      origin.endsWith('.vercel.app')
+    ) {
+      return callback(null, true)
     }
-    app.use(cors(corsOptions))
+    return callback(new Error('Not allowed by CORS'), false)
+  },
+  credentials: true
 }
+
+app.use(cors(corsOptions))
 app.all('*all', setupAsyncLocalStorage)
 
 app.use('/api/auth', authRoutes)
