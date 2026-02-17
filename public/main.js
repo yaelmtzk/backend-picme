@@ -35,13 +35,13 @@ async function onRemoveStory() {
 }
 
 async function onAddStory() {
-    await userService.login({ username: 'puki', password: '123' })
+    await userService.login({ username: 'shira', password: 'shira1' })
     const savedStory = await storyService.save(storyService.getEmptyStory())
     render('Saved Story', savedStory)
 }
 
 async function onAddStoryComment() {
-    await userService.login({ username: 'puki', password: '123' })
+    await userService.login({ username: 'shira', password: 'shira1' })
     const id = prompt('Story id?')
     if (!id) return
 

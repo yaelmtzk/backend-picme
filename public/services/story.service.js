@@ -15,7 +15,7 @@ export const storyService = {
 window.cs = storyService
 
 
-async function query(filterBy = { txt: '', price: 0 }) {
+async function query(filterBy = { txt: '', username = ''}) {
     return httpService.get('story', filterBy)
 }
 function getById(storyId) {
