@@ -18,28 +18,29 @@ const server = http.createServer(app)
 app.use(cookieParser())
 app.use(express.json())
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+]
+
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true)
 
     if (
-      origin.startsWith('http://localhost') ||
-      origin.startsWith('http://127.0.0.1') ||
-      origin.includes('.vercel.app')
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app')
     ) {
-      return callback(null, true)
+      callback(null, origin)
+    } else {
+      callback(new Error('Not allowed by CORS'))
     }
-
-    console.log('Blocked by CORS:', origin)
-    return callback(null, false)
   },
   credentials: true
 }
 
 app.use(cors(corsOptions))
 
-
-app.use(cors(corsOptions))
 app.all('*all', setupAsyncLocalStorage)
 
 app.use('/api/auth', authRoutes)
@@ -48,9 +49,9 @@ app.use('/api/story', storyRoutes)
 
 setupSocketAPI(server)
 
-app.get('/*all', (req, res) => {
-    res.sendFile(path.resolve('public/index.html'))
-})
+// app.get('/*all', (req, res) => {
+//     res.sendFile(path.resolve('public/index.html'))
+// })
 
 import { logger } from './services/logger.service.js'
 const port = process.env.PORT || 3030
